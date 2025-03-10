@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        .search-section {
+            margin-top: 30px;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .user-card {
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 4px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f5e9;
+            border-radius: 4px;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>User Management System</h1>
+        
+        <!-- Add User Form -->
+        <h2>Add New User</h2>
+        <form id="addUserForm">
+            <div class="form-group">
+                <label for="name">Name:</label>
+                <input type="text" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="tel" id="phone" required>
+            </div>
+            <div class="form-group">
+                <label for="age">Age:</label>
+                <input type="number" id="age" required>
+            </div>
+            <div class="form-group">
+                <label for="designation">Designation:</label>
+                <input type="text" id="designation" required>
+            </div>
+            <button type="submit" id="submitBtn">
+                <span class="button-text">Add User</span>
+                <div class="loading" style="display: none;"></div>
+            </button>
+        </form>
+        <div id="addUserMessage"></div>
+
+        <!-- Search Section -->
+        <div class="search-section">
+            <h2>Search Users</h2>
+            <div class="form-group">
+                <label for="searchName">Search by Name:</label>
+                <input type="text" id="searchName">
+            </div>
+            <button onclick="searchUsers()" id="searchBtn">
+                <span class="button-text">Search</span>
+                <div class="loading" style="display: none;"></div>
+            </button>
+            <div id="searchResults" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        function setLoading(buttonId, isLoading) {
+            const button = document.getElementById(buttonId);
+            const buttonText = button.querySelector('.button-text');
+            const loadingSpinner = button.querySelector('.loading');
+            
+            button.disabled = isLoading;
+            buttonText.style.display = isLoading ? 'none' : 'inline';
+            loadingSpinner.style.display = isLoading ? 'inline-block' : 'none';
+        }
+
+        
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            setLoading('submitBtn', true);
+            
+            const userData = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                age: parseInt(document.getElementById('age').value),
+                designation: document.getElementById('designation').value
+            };
+
+            try {
+                const response = await fetch('/api/users/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('addUserMessage').innerHTML = 
+                        '<div class="success">User added successfully!</div>';
+                    document.getElementById('addUserForm').reset();
+                } else {
+                    document.getElementById('addUserMessage').innerHTML = 
+                        `<div class="error">Error: ${result.error || 'Failed to add user'}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('addUserMessage').innerHTML = 
+                    `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                setLoading('submitBtn', false);
+            }
+        });
+
+    
+        async function searchUsers() {
+            const searchName = document.getElementById('searchName').value;
+            const resultsDiv = document.getElementById('searchResults');
+            setLoading('searchBtn', true);
+            
+            try {
+                const response = await fetch(`/api/users/search/?name=${encodeURIComponent(searchName)}`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    const users = result.users;
+                    if (users.length === 0) {
+                        resultsDiv.innerHTML = '<p>No users found</p>';
+                        return;
+                    }
+
+                    resultsDiv.innerHTML = users.map(user => `
+                        <div class="user-card">
+                            <h3>${user.name}</h3>
+                            <p><strong>Phone:</strong> ${user.phone}</p>
+                            <p><strong>Age:</strong> ${user.age}</p>
+                            <p><strong>Designation:</strong> ${user.designation}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    resultsDiv.innerHTML = `<div class="error">Error: ${result.error || 'Failed to search users'}</div>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                setLoading('searchBtn', false);
+            }
+        }
+    </script>
+</body>
+</html> 
